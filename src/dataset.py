@@ -1,6 +1,7 @@
 import os
 import torch
 import pandas as pd
+import numpy as np
 from torch.utils.data import Dataset
 from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd, Resized, ScaleIntensityd,
@@ -188,8 +189,8 @@ class DualImageDataset(Dataset):
         label = self.dataframe.loc[idx, 'label']
         
         # Construct paths for both image modalities
-        img_path1 = os.path.join(self.root_dir, pat_id + "_t2f.nii.gz")
-        img_path2 = os.path.join(self.root_dir, pat_id + "_t1ce.nii.gz")
+        img_path1 = os.path.join(self.root_dir, pat_id + "-t2f.nii.gz")
+        img_path2 = os.path.join(self.root_dir, pat_id + "-t1c.nii.gz")
     
         sample = {"image1": img_path1, "image2": img_path2}
         
@@ -276,15 +277,15 @@ class QuadImageDataset(Dataset):
 
     def __getitem__(self, idx):
         pat_id = str(self.dataframe.loc[idx, 'pat_id'])
-        label = self.dataframe.loc[idx, 'survival']
+        label = self.dataframe.loc[idx, 'label']
         #dataset = str(self.dataframe.loc[idx, 'dataset'])
         
         # Construct paths for all four image modalities
         # Common brain tumor sequences: T1, T1c, T2, FLAIR
-        img_path1 = os.path.join(self.root_dir,  pat_id + "_t1ce.nii.gz")
-        img_path2 = os.path.join(self.root_dir, pat_id + "_t1n.nii.gz")
-        img_path3 = os.path.join(self.root_dir, pat_id + "_t2w.nii.gz")
-        img_path4 = os.path.join(self.root_dir, pat_id + "_t2f.nii.gz")
+        img_path1 = os.path.join(self.root_dir,  pat_id + "-t1c.nii.gz")
+        img_path2 = os.path.join(self.root_dir, pat_id + "-t1n.nii.gz")
+        img_path3 = os.path.join(self.root_dir, pat_id + "-t2w.nii.gz")
+        img_path4 = os.path.join(self.root_dir, pat_id + "-t2f.nii.gz")
 
     
         sample = {"image1": img_path1, "image2": img_path2, "image3": img_path3, "image4": img_path4}
@@ -365,3 +366,17 @@ class SegmentationDataset(Dataset):
             "image": sample["image"],
             "mask": sample["mask"].long()
         }
+
+#==============================================
+## DATASET UTILS FUNCTIONS
+#==============================================
+
+
+def get_pos_weight(filename):
+
+    """Gets the fraction of positive examples in the train set. Takes as input the path to a csv file contianing the labels for the training data."""
+
+    train = pd.read_csv(filename)
+    label = train["label"]
+    
+    return (len(label)-np.sum(label))/np.sum(label)

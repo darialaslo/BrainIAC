@@ -184,11 +184,12 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']['visible_device']
-
+    # wandb.init(project="my-project", mode="offline")
     wandb_logger = WandbLogger(
         project=config['logger']['project_name'],
         name=config['logger']['run_name'],
-        config=config
+        config=config,
+        mode="offline"
     )
 
     data_module = DualInputBinaryClassificationDataModule(config)

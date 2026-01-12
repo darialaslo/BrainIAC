@@ -17,7 +17,7 @@ def load_brainiac(checkpoint_path, device='cuda'):
     model = ViTBackboneNet(checkpoint_path)
     
     # Move model to specified device
-    model = model.to(device)
+    model = model.to(torch.device(device))
     
     return model
 
