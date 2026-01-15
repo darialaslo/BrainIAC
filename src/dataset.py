@@ -276,22 +276,40 @@ class QuadImageDataset(Dataset):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
+        
+    
         pat_id = str(self.dataframe.loc[idx, 'pat_id'])
         label = self.dataframe.loc[idx, 'label']
         #dataset = str(self.dataframe.loc[idx, 'dataset'])
         
         # Construct paths for all four image modalities
         # Common brain tumor sequences: T1, T1c, T2, FLAIR
-        img_path1 = os.path.join(self.root_dir,  pat_id + "-t1c.nii.gz")
-        img_path2 = os.path.join(self.root_dir, pat_id + "-t1n.nii.gz")
-        img_path3 = os.path.join(self.root_dir, pat_id + "-t2w.nii.gz")
-        img_path4 = os.path.join(self.root_dir, pat_id + "-t2f.nii.gz")
+        if pat_id.find("COREGISTER")!=-1:
+            img_path1 = os.path.join(self.root_dir,  pat_id + "/T1_to_SRI_ss.nii.gz")
+            img_path2 = os.path.join(self.root_dir, pat_id + "/T1CE_to_SRI_ss.nii.gz")
+            img_path3 = os.path.join(self.root_dir, pat_id + "/T2_to_SRI_ss.nii.gz")
+            img_path4 = os.path.join(self.root_dir, pat_id + "/FL_to_SRI_ss.nii.gz")
+            
+        elif pat_id.find("sub-")!=-1:
+            img_path1 = os.path.join(self.root_dir,  pat_id + f"/mr-anat/{pat_id.split('/')[-2]}_{pat_id.split('/')[-1]}_T1.nii.gz")
+            img_path2 = os.path.join(self.root_dir, pat_id + f"/mr-anat/{pat_id.split('/')[-2]}_{pat_id.split('/')[-1]}_T1CE.nii.gz")
+            img_path3 = os.path.join(self.root_dir, pat_id + f"/mr-anat/{pat_id.split('/')[-2]}_{pat_id.split('/')[-1]}_T2.nii.gz")
+            img_path4 = os.path.join(self.root_dir, pat_id + f"/mr-anat/{pat_id.split('/')[-2]}_{pat_id.split('/')[-1]}_FLAIR.nii.gz")
+
+        else:
+            img_path1 = os.path.join(self.root_dir,  pat_id + "-t1c.nii.gz")
+            img_path2 = os.path.join(self.root_dir, pat_id + "-t1n.nii.gz")
+            img_path3 = os.path.join(self.root_dir, pat_id + "-t2w.nii.gz")
+            img_path4 = os.path.join(self.root_dir, pat_id + "-t2f.nii.gz")
 
     
         sample = {"image1": img_path1, "image2": img_path2, "image3": img_path3, "image4": img_path4}
-        
+    
         if self.transform:
             sample = self.transform(sample)
+
+
+
 
         # Return all four images, collate_fn will stack them for model input
         return {
@@ -299,7 +317,7 @@ class QuadImageDataset(Dataset):
             "image2": sample["image2"], 
             "image3": sample["image3"], 
             "image4": sample["image4"], 
-            "label": torch.tensor(label, dtype=torch.float)
+            "label": torch.tensor(label, dtype=torch.long)
         } 
     
 

@@ -24,7 +24,7 @@ from dataset import (BrainAgeDataset, MCIStrokeDataset, SequenceDataset, DualIma
 # =============================================================================
 
 # Model paths
-SIMCLR_CKPT_PATH = "/media/data/divyanshu/foundation_model/Brainiac_revision/checkpoints/simclr_vitb_checkpoints/brainiac_trainval32k_simclr_normandscaling_vitb_cls_normonly_biasbeforenorm_lr0005_best-model-epoch=18-train_loss=0.00.ckpt"
+SIMCLR_CKPT_PATH = "/cluster/work/bmdslab/brain-mri/foundation_models/BrainIAC/src/checkpoints/BrainIAC.ckpt"
 
 # Dataset configurations - Add your datasets here
 DATASETS = {
@@ -81,12 +81,21 @@ DATASETS = {
         "task_type": "regression",
         "image_type": "single",
         "num_classes": 1
+    },
+    "radiotherapy_response": {
+        "checkpoint_path": "/cluster/work/bmdslab/brain-mri/foundation_models/BrainIAC/results/rt_config_15_train_best-model-epoch=57-val_auc=0.00.ckpt",
+        "test_csv_path": "/cluster/work/bmdslab/brain-mri/foundation_models/BrainIAC/src/data/csvs/sample_test_rt_pred_binary.csv",
+        "root_dir": "/cluster/work/bmdslab/borgw/GLIMMRT",
+        "output_csv_path": "/cluster/work/bmdslab/brain-mri/foundation_models/BrainIAC/results/rt_test_predictions.csv",
+        "task_type": "classification",
+        "image_type": "quad",
+        "num_classes": 1
     }
 }
 
 # Select which datasets to run inference on (use dataset keys from above)
 DATASETS_TO_RUN = [
-   "brainage_task"
+   "radiotherapy_response"
 ]
 
 # Data configuration
