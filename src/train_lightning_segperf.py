@@ -5,7 +5,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 import wandb
 import torchmetrics
 
@@ -43,12 +43,14 @@ class QuadInputBinaryClassificationLightningModule(pl.LightningModule):
         self.train_recall = torchmetrics.Recall(task="binary")
         self.train_f1 = torchmetrics.F1Score(task="binary")
         self.train_auroc = torchmetrics.AUROC(task="binary")
+        self.train_auprc = torchmetrics.AveragePrecision(task="binary")
 
         self.val_accuracy = torchmetrics.Accuracy(task="binary")
         self.val_precision = torchmetrics.Precision(task="binary")
         self.val_recall = torchmetrics.Recall(task="binary")
         self.val_f1 = torchmetrics.F1Score(task="binary")
         self.val_auroc = torchmetrics.AUROC(task="binary")
+        self.val_auprc = torchmetrics.AveragePrecision(task="binary")
 
         # Freeze backbone if specified
         if str(config['train']['freeze']).lower() == "yes":
@@ -75,12 +77,14 @@ class QuadInputBinaryClassificationLightningModule(pl.LightningModule):
         self.train_recall.update(squeezed_preds, target)
         self.train_f1.update(squeezed_preds, target)
         self.train_auroc.update(squeezed_preds, target)
-        
+        self.train_auprc.update(squeezed_preds, target)
+
         self.log('train_acc', self.train_accuracy, on_step=False, on_epoch=True)
         self.log('train_precision', self.train_precision, on_step=False, on_epoch=True)
         self.log('train_recall', self.train_recall, on_step=False, on_epoch=True)
         self.log('train_f1', self.train_f1, on_step=False, on_epoch=True)
         self.log('train_auroc', self.train_auroc, on_step=False, on_epoch=True)
+        self.log('train_auprc', self.train_auprc, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -112,36 +116,40 @@ class QuadInputBinaryClassificationLightningModule(pl.LightningModule):
         self.val_recall.update(all_y_pred_probs_squeezed, all_y_true)
         self.val_f1.update(all_y_pred_probs_squeezed, all_y_true)
         self.val_auroc.update(all_y_pred_probs_squeezed, all_y_true)
+        self.val_auprc.update(all_y_pred_probs_squeezed, all_y_true)
 
         val_acc = self.val_accuracy.compute()
         val_prec = self.val_precision.compute()
         val_rec = self.val_recall.compute()
         val_f1 = self.val_f1.compute()
         val_auroc_score = self.val_auroc.compute()
+        val_auprc_score = self.val_auprc.compute()
 
         self.log('val_acc', val_acc, prog_bar=True)
         self.log('val_precision', val_prec, prog_bar=True)
         self.log('val_recall', val_rec, prog_bar=True)
         self.log('val_f1', val_f1, prog_bar=True)
         self.log('val_auroc', val_auroc_score, prog_bar=True)
+        self.log('val_auprc', val_auprc_score, prog_bar=True)
 
         if val_auroc_score > self.best_val_auroc:
             self.best_val_auroc = val_auroc_score
-            
+
         self.validation_step_outputs.clear()
-        
+
         self.val_accuracy.reset()
         self.val_precision.reset()
         self.val_recall.reset()
         self.val_f1.reset()
         self.val_auroc.reset()
+        self.val_auprc.reset()
 
     def configure_optimizers(self):
         # Pass only the trainable parameters to the optimizer
         trainable_params = filter(lambda p: p.requires_grad, self.parameters())
         optimizer = torch.optim.Adam(trainable_params, lr=self.config['optim']['lr'], weight_decay=self.config['optim']['weight_decay'])
         scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=50, T_mult=2) # Consider config for T_0, T_mult
-        return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_auroc'}
+        return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_auprc'}
 
 class QuadInputBinaryClassificationDataModule(pl.LightningDataModule):
     def __init__(self, config):
@@ -202,17 +210,24 @@ if __name__ == "__main__":
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=config['logger']['save_dir'],
-        filename=config['logger']['save_name'],  
-        monitor='val_auroc',
+        filename=config['logger']['save_name'],
+        monitor='val_auprc',
         mode='max',
         save_top_k=config['train'].get('save_top_k', 5)
     )
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
+    early_stop_callback = EarlyStopping(
+        monitor='val_auprc',
+        mode='max',
+        patience=config['train'].get('early_stopping_patience', 20),
+        min_delta=config['train'].get('early_stopping_min_delta', 0.001),
+        verbose=True
+    )
 
     trainer = pl.Trainer(
         max_epochs=config['model']['max_epochs'],
         logger=wandb_logger,
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
         accelerator=config['train'].get('accelerator', 'auto'),
         devices=config['train'].get('devices', 'auto'),
         precision=config['train'].get('precision', "16-mixed")

@@ -20,7 +20,7 @@ optim:
 
 logger:
   save_dir: "/media/data/divyanshu/foundation_model/Brainiac_revision/simclrvit_finetuning/frozen_downstream_checkpoints"
-  save_name: "100percent_seq_tejas_cls_swinvit_0008_best-model-{epoch:02d}-{val_auc:.2f}"
+  save_name: "100percent_seq_tejas_cls_swinvit_0008_best-model-{epoch:02d}-auprc{val_auprc:.2f}-auroc{val_auroc:.2f}-f1{val_f1:.2f}-prec{val_precision:.2f}-rec{val_recall:.2f}"
   run_name: "100percent_seq_tejas_cls_swinvit_0008"
   project_name: "swinvitmae_finetune_downstream_frozen"
 gpu:
