@@ -217,8 +217,8 @@ if __name__ == "__main__":
     )
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     early_stop_callback = EarlyStopping(
-        monitor='val_auprc',
-        mode='max',
+        monitor='val_loss',
+        mode='min',
         patience=config['train'].get('early_stopping_patience', 20),
         min_delta=config['train'].get('early_stopping_min_delta', 0.001),
         verbose=True
